@@ -1,0 +1,31 @@
+
+trigger:
+  - main
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+stages:
+  - stage: Build
+    displayName: 'Build Java Application'
+    jobs:
+      - job: MavenBuild
+        displayName: 'Maven Build and Test'
+        steps:
+          - task: Maven@4
+            displayName: 'Build and Test'
+            inputs:
+              mavenPomFile: 'pom.xml'
+              goals: 'clean test package'
+              publishJUnitResults: true
+              testResultsFiles: '**/surefire-reports/TEST-*.xml'
+              javaHomeOption: 'JDKVersion'
+              jdkVersionOption: '1.17'
+              mavenVersionOption: 'Default'
+
+          - task: PublishBuildArtifacts@1
+            displayName: 'Publish JAR Artifact'
+            inputs:
+              PathtoPublish: 'target'
+              ArtifactName: 'java-application'
+              publishLocation: 'Container'
