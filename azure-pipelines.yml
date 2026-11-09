@@ -1,31 +1,45 @@
 
 trigger:
-  - main
+  branches:
+    include:
+      - main
 
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: 'ubuntu-24.04'
 
-stages:
-  - stage: Build
-    displayName: 'Build Java Application'
-    jobs:
-      - job: MavenBuild
-        displayName: 'Maven Build and Test'
-        steps:
-          - task: Maven@4
-            displayName: 'Build and Test'
-            inputs:
-              mavenPomFile: 'pom.xml'
-              goals: 'clean test package'
-              publishJUnitResults: true
-              testResultsFiles: '**/surefire-reports/TEST-*.xml'
-              javaHomeOption: 'JDKVersion'
-              jdkVersionOption: '1.17'
-              mavenVersionOption: 'Default'
+steps:
+  # Step 1: Checkout source code
+  - checkout: self
+    displayName: 'Checkout source code'
 
-          - task: PublishBuildArtifacts@1
-            displayName: 'Publish JAR Artifact'
-            inputs:
-              PathtoPublish: 'target'
-              ArtifactName: 'java-application'
-              publishLocation: 'Container'
+  # Step 2: Validate repository files
+  - bash: |
+      set -euo pipefail
+
+      echo "Checking repository files..."
+
+      test -f test.txt
+      grep -Fxq "Created test file" test.txt
+
+      echo "Repository validation successful!"
+    displayName: 'Validate repository content'
+
+  # Step 3: Prepare build package
+  - bash: |
+      set -euo pipefail
+
+      mkdir -p "$(Build.ArtifactStagingDirectory)/package"
+
+      cp test.txt "$(Build.ArtifactStagingDirectory)/package/"
+      cp azure-pipelines.yml "$(Build.ArtifactStagingDirectory)/package/"
+
+      echo "Build ID: $(Build.BuildId)" > "$(Build.ArtifactStagingDirectory)/package/build-info.txt"
+    displayName: 'Prepare package'
+
+  # Step 4: Publish artifact
+  - task: PublishPipelineArtifact@1
+    displayName: 'Publish CI artifact'
+    inputs:
+      targetPath: '$(Build.ArtifactStagingDirectory)/package'
+      artifact: 'githubdemo-package'
+      publishLocation: 'pipeline'
